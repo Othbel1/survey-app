@@ -1,0 +1,212 @@
+from sqlalchemy import Column, Integer, String
+from database import Base
+
+class Survey(Base):
+    __tablename__ = "surveys"
+
+    id = Column(Integer, primary_key=True, index=True)
+    video_id = Column(String)
+    question = Column(String)
+    slug = Column(String, unique=True)
+
+
+class Response(Base):
+    __tablename__ = "responses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    survey_id = Column(Integer)
+    answer = Column(String)import csv
+import os
+import re
+from database import SessionLocal
+from models import Survey
+
+CSV_FILE = r"D:\Survey App\video_survey_scripts.csv"
+
+
+def make_slug(text, index):
+    base = re.sub(r'[^a-zA-Z0-9]+', '-', text.lower()).strip('-')
+    return f"{base[:60]}-{index}"
+
+
+def import_surveys():
+    db = SessionLocal()
+
+    print("📂 FILE:", CSV_FILE)
+    print("✔ EXISTS:", os.path.exists(CSV_FILE))
+
+    if not os.path.exists(CSV_FILE):
+        raise FileNotFoundError("CSV not found")
+
+    with open(CSV_FILE, newline='', encoding='utf-8-sig') as file:
+        reader = csv.DictReader(file)
+
+        inserted = 0
+        skipped = 0
+
+        for i, row in enumerate(reader, start=1):
+
+            row = {
+                k.strip(): (v.strip() if isinstance(v, str) else v)
+                for k, v in row.items()
+            }
+
+            question = row.get("question")
+            video_id = row.get("video_id")
+
+            if not video_id:
+                video_id = None
+
+            if not question:
+                skipped += 1
+                continue
+
+            slug = make_slug(question, i)
+
+            # prevent duplicates
+            existing = db.query(Survey).filter(Survey.slug == slug).first()
+            if existing:
+                skipped += 1
+                continue
+
+            db.add(Survey(
+                video_id=video_id,
+                question=question,
+                slug=slug
+            ))
+
+            inserted += 1
+
+        db.commit()
+        db.close()
+
+        print("\n======================")
+        print(f"✅ INSERTED: {inserted}")
+        print(f"⏩ SKIPPED: {skipped}")
+        print("======================")
+
+
+if __name__ == "__main__":
+    import_surveys()from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
+
+DATABASE_URL = "sqlite:///./surveys.db"  # start simple (no PostgreSQL yet)
+
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+
+Base = declarative_base()from fastapi import FastAPI, Form
+from fastapi.responses import RedirectResponse
+
+from database import engine, SessionLocal
+from models import Base, Survey, Response
+
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI()
+
+
+# ---------------------------
+# GET ALL SURVEY LINKS
+# ---------------------------
+@app.get("/survey-links")
+def survey_links():
+    db = SessionLocal()
+
+    surveys = db.query(Survey).all()
+
+    db.close()
+
+    base_url = "http://127.0.0.1:8000/s/"
+
+    return [
+        {
+            "id": s.id,
+            "question": s.question,
+            "link": base_url + s.slug
+        }
+        for s in surveys
+    ]
+
+
+# ---------------------------
+# GET SINGLE SURVEY
+# ---------------------------
+@app.get("/s/{slug}")
+def get_survey(slug: str):
+    db = SessionLocal()
+
+    survey = db.query(Survey).filter(Survey.slug == slug).first()
+
+    db.close()
+
+    if not survey:
+        return {"error": "Survey not found"}
+
+    return {
+        "id": survey.id,
+        "question": survey.question,
+        "video_id": survey.video_id,
+        "slug": survey.slug
+    }
+
+
+# ---------------------------
+# SUBMIT ANSWER
+# ---------------------------
+@app.post("/submit")
+def submit_answer(
+    survey_id: int = Form(...),
+    answer: str = Form(...)
+):
+    db = SessionLocal()
+
+    db.add(Response(
+        survey_id=survey_id,
+        answer=answer
+    ))
+
+    db.commit()
+    db.close()
+
+    return RedirectResponse(url="/thank-you", status_code=303)
+
+
+# ---------------------------
+# THANK YOU PAGE
+# ---------------------------
+@app.get("/thank-you")
+def thank_you():
+    return {"message": "Thanks for your response"}<!DOCTYPE html>
+<html>
+<head>
+    <title>Survey</title>
+</head>
+<body>
+
+<h2>{{ survey.question }}</h2>
+
+<form action="/submit" method="post">
+
+    <input type="hidden" name="survey_id" value="{{ survey.id }}">
+
+    <label>
+        <input type="radio" name="answer" value="Yes">
+        Yes
+    </label><br>
+
+    <label>
+        <input type="radio" name="answer" value="No">
+        No
+    </label><br>
+
+    <label>
+        <input type="radio" name="answer" value="Not sure">
+        Not sure
+    </label><br><br>
+
+    <button type="submit">Submit</button>
+</form>
+
+</body>
+</html>

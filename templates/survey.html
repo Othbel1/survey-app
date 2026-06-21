@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Survey</title>
+</head>
+<body>
+
+<h2>{{ survey.question }}</h2>
+
+<form action="/submit" method="post">
+
+    <input type="hidden" name="survey_id" value="{{ survey.id }}">
+
+    <label>
+        <input type="radio" name="answer" value="Yes">
+        Yes
+    </label><br>
+
+    <label>
+        <input type="radio" name="answer" value="No">
+        No
+    </label><br>
+
+    <label>
+        <input type="radio" name="answer" value="Not sure">
+        Not sure
+    </label><br><br>
+
+    <button type="submit">Submit</button>
+</form>
+
+</body>
+</html>

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background: #f8f9fa;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background: #333;
+            color: white;
+        }
+
+        tr:hover {
+            background: #f1f1f1;
+        }
+
+        .btn {
+            padding: 6px 10px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .delete {
+            background: red;
+            color: white;
+        }
+
+        .open {
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            padding: 6px 10px;
+        }
+    </style>
+</head>
+<body>
+
+<h2>📊 Survey Admin Dashboard</h2>
+
+<table>
+    <tr>
+        <th>ID</th>
+        <th>Question</th>
+        <th>Slug</th>
+        <th>Open Survey</th>
+        <th>Action</th>
+    </tr>
+
+    {% for s in surveys %}
+    <tr>
+        <td>{{ s.id }}</td>
+        <td>{{ s.question }}</td>
+        <td>{{ s.slug }}</td>
+        <td>
+            <a class="open" href="/s/{{ s.slug }}" target="_blank">Open</a>
+        </td>
+        <td>
+            <form method="post" action="/admin/delete/{{ s.id }}">
+                <button class="btn delete" type="submit">Delete</button>
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+
+</table>
+
+</body>
+</html>
