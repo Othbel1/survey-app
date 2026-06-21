@@ -24,7 +24,7 @@ def home():
 
 
 # ---------------------------
-# ADMIN DASHBOARD
+# ADMIN DASHBOARD (FIXED)
 # ---------------------------
 @app.get("/admin")
 def admin_page(request: Request):
@@ -32,9 +32,19 @@ def admin_page(request: Request):
     surveys = db.query(Survey).all()
     db.close()
 
+    clean_surveys = [
+        {
+            "id": s.id,
+            "question": s.question,
+            "slug": s.slug
+        }
+        for s in surveys
+    ]
+
     return templates.TemplateResponse(
+        request,
         "admin.html",
-        {"request": request, "surveys": surveys}
+        {"surveys": clean_surveys}
     )
 
 
@@ -69,9 +79,16 @@ def get_survey(request: Request, slug: str):
     if not survey:
         return {"error": "Survey not found"}
 
+    survey_data = {
+        "id": survey.id,
+        "question": survey.question,
+        "slug": survey.slug
+    }
+
     return templates.TemplateResponse(
+        request,
         "survey.html",
-        {"request": request, "survey": survey}
+        {"survey": survey_data}
     )
 
 
@@ -107,7 +124,7 @@ def submit_answer(
 
 
 # ---------------------------
-# THANK YOU PAGE (FIXED)
+# THANK YOU PAGE
 # ---------------------------
 @app.get("/thank-you", response_class=HTMLResponse)
 def thank_you():
@@ -118,7 +135,7 @@ def thank_you():
         <title>Thank You</title>
         <style>
             body {
-                font-family: Arial, sans-serif;
+                font-family: Arial;
                 background: #f5f5f5;
                 display: flex;
                 justify-content: center;
@@ -130,8 +147,8 @@ def thank_you():
                 background: white;
                 padding: 40px;
                 border-radius: 12px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
                 text-align: center;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             }
             h1 { color: #28a745; }
             a {
@@ -157,7 +174,7 @@ def thank_you():
 
 
 # ---------------------------
-# ANALYTICS UI
+# ANALYTICS UI (FIXED)
 # ---------------------------
 @app.get("/admin/analytics-ui")
 def analytics_ui(request: Request):
@@ -170,7 +187,11 @@ def analytics_ui(request: Request):
         responses = db.query(Response).filter(Response.survey_id == s.id).all()
 
         results.append({
-            "survey": s,
+            "survey": {
+                "id": s.id,
+                "question": s.question,
+                "slug": s.slug
+            },
             "yes": sum(1 for r in responses if r.answer == "Yes"),
             "no": sum(1 for r in responses if r.answer == "No"),
             "unsure": sum(1 for r in responses if r.answer == "Not sure"),
@@ -180,13 +201,14 @@ def analytics_ui(request: Request):
     db.close()
 
     return templates.TemplateResponse(
+        request,
         "analytics.html",
-        {"request": request, "results": results}
+        {"results": results}
     )
 
 
 # ---------------------------
-# ANALYTICS API (FIXED)
+# ANALYTICS API
 # ---------------------------
 @app.get("/admin/analytics")
 def admin_analytics():
