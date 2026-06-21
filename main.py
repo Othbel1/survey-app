@@ -32,6 +32,7 @@ def admin_page(request: Request):
     surveys = db.query(Survey).all()
     db.close()
 
+    # convert ORM objects → dicts (IMPORTANT FIX)
     clean_surveys = [
         {
             "id": s.id,
@@ -174,15 +175,15 @@ def thank_you():
 
 
 # ---------------------------
-# ANALYTICS UI (FIXED)
+# ANALYTICS UI
 # ---------------------------
 @app.get("/admin/analytics-ui")
 def analytics_ui(request: Request):
     db = SessionLocal()
 
     surveys = db.query(Survey).all()
-    results = []
 
+    results = []
     for s in surveys:
         responses = db.query(Response).filter(Response.survey_id == s.id).all()
 
@@ -217,7 +218,6 @@ def admin_analytics():
     surveys = db.query(Survey).all()
 
     data = []
-
     for s in surveys:
         responses = db.query(Response).filter(Response.survey_id == s.id).all()
 
